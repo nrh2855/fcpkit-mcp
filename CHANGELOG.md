@@ -8,6 +8,9 @@ First standalone release, extracted from a private editing toolkit.
   one line per cut with everything starting under it, coverage n/n), English or Korean labels;
   main-storyline compound clips are opened in place, overlay compounds report how much they hide.
 
+- `fcpkit-brief-apply` / MCP `fcpkit_brief_apply`: edit the brief, apply the changed lines back to a new,
+  verified FCPXML. Brief v2: keyframe values, overlay compound contents, range-scoped stats, stable ids.
+
 Security review before release:
 - Every XML read refuses entity declarations and DOCTYPE internal subsets
   (entity-expansion bombs on old expat; XXE was already off by default).

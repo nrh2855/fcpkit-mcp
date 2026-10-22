@@ -4,8 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from fcpkit import timeline_brief  # noqa: E402
+from fcpkit import timeline_brief
 from fixtures import asset, fcpxml, write  # noqa: E402
 
 
@@ -46,10 +45,6 @@ class BriefTest(unittest.TestCase):
         self.assertEqual(len([r for r in rows if r['tag'] == 'title']), 3)
 
 
-if __name__ == '__main__':
-    unittest.main()
-
-
 class CompoundTest(unittest.TestCase):
     def test_main_storyline_compound_is_opened(self):
         with tempfile.TemporaryDirectory() as d:
@@ -73,11 +68,15 @@ class CompoundTest(unittest.TestCase):
 
 
 class BriefEnglishTest(unittest.TestCase):
-    def test_english_labels_by_default(self):
+    def test_english_labels(self):
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)
             src = d / 'a.mp4'
             src.write_bytes(b'')
             spine = '<asset-clip ref="r2" offset="0s" start="10s" duration="5s" name="A"/>'
-            text, _ = timeline_brief.render(write(d, 'x.fcpxml', fcpxml(asset('r2', src, 100), spine, '5s')))
+            text, _ = timeline_brief.render(write(d, 'x.fcpxml', fcpxml(asset('r2', src, 100), spine, '5s')), lang='en')
         self.assertIn('timed items shown 1/1 (all)', text)
+
+
+if __name__ == '__main__':
+    unittest.main()

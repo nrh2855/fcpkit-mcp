@@ -9,6 +9,7 @@ it is annotated readOnlyHint=false.
 
 Tools:
   fcpkit_brief            the timeline as a compact readable brief (read this before raw XML)
+  fcpkit_brief_apply      apply an edited brief back to a NEW FCPXML (changed lines only, verified)
   fcpkit_handles          transition handle + jump-cut-dissolve check
   fcpkit_effects_check    effect/template resolution against FCP's registries
   fcpkit_timeline_diff    what changed between two timelines
@@ -39,7 +40,8 @@ ANNOTATIONS = {'readOnlyHint': True, 'destructiveHint': False, 'openWorldHint': 
 
 def _annotations(name: str) -> dict:
     # filmstrip creates PNGs in a new folder: not read-only, but never overwrites or deletes
-    return {**ANNOTATIONS, 'readOnlyHint': False} if name == 'fcpkit_filmstrip' else ANNOTATIONS
+    # filmstrip writes PNGs into a new folder, brief_apply a new FCPXML: never overwrite, never delete
+    return {**ANNOTATIONS, 'readOnlyHint': False} if name in ('fcpkit_filmstrip', 'fcpkit_brief_apply') else ANNOTATIONS
 
 
 def _sec(value) -> Fraction:
@@ -109,11 +111,22 @@ def tool_libraries(durations: bool = True, timeout: int = 20) -> dict:
 
 
 def tool_brief(xml: str, start: float | None = None, end: float | None = None, detail: int = 2,
-               lang: str = 'en') -> dict:
+               lang: str = 'en', ids: bool = False) -> dict:
     from . import timeline_brief
     lim = lambda v: Fraction(str(v)).limit_denominator(10 ** 6) if v is not None else None  # noqa: E731
-    text, _ = timeline_brief.render(xml, lim(start), lim(end), int(detail), lang=lang)
+    text, _ = timeline_brief.render(xml, lim(start), lim(end), int(detail), lang=lang, ids=bool(ids))
     return {'brief': text}
+
+
+def tool_brief_apply(xml: str, edited_brief: str, out: str, partial: bool = False, dry_run: bool = False) -> dict:
+    from . import brief_apply
+    path = Path(tempfile.mkdtemp(prefix='fcpkit-brief-')) / 'edited.md'
+    path.write_text(edited_brief, encoding='utf-8')
+    try:
+        rep = brief_apply.apply(xml, path, out, bool(partial), bool(dry_run))
+    except brief_apply.Refused as err:
+        rep = {'status': 'REFUSED', 'note': str(err), 'applied': [], 'refused': []}
+    return json.loads(json.dumps(rep, default=str))
 
 
 XML = {'type': 'string', 'description': 'path to a .fcpxml file or .fcpxmld bundle'}
@@ -127,7 +140,18 @@ TOOLS = {
                       'end': {'type': 'number', 'description': 'to this timeline second'},
                       'detail': {'type': 'integer', 'enum': [1, 2, 3],
                                  'description': '1 no values, 2 key values (default), 3 + effect parameters'},
-                      'lang': {'type': 'string', 'enum': ['en', 'ko'], 'description': 'label language'}}, ['xml']),
+                      'lang': {'type': 'string', 'enum': ['en', 'ko'], 'description': 'label language'},
+                      'ids': {'type': 'boolean', 'description': 'add #n to element lines so the brief can be edited '
+                              'and sent to fcpkit_brief_apply'}}, ['xml']),
+    'fcpkit_brief_apply': (tool_brief_apply, 'Apply an edited brief (made with fcpkit_brief ids=true from this exact '
+                           'XML) back to a NEW FCPXML: only changed lines are applied — start time, length, lane, '
+                           'caption text, "vol NdB", or a deleted line; main-storyline cuts accept vol only. Anything '
+                           'else is refused and nothing is written. The result is verified (only the edited elements '
+                           'changed, to the requested values) and DTD-validated. Never overwrites the source.',
+                           {'xml': XML, 'edited_brief': {'type': 'string', 'description': 'the full edited brief text'},
+                            'out': {'type': 'string', 'description': 'new .fcpxml / .fcpxmld path (must not exist)'},
+                            'partial': {'type': 'boolean'}, 'dry_run': {'type': 'boolean'}},
+                           ['xml', 'edited_brief', 'out']),
     'fcpkit_handles': (tool_handles, 'Check every transition: does each side have the media it needs (multicam, '
                        'compound and retime aware), and does a dissolve sit on a jump cut (it would show removed '
                        'material)? Statuses PASS/INFO/REVIEW/FAIL; unknown is REVIEW, never PASS.',

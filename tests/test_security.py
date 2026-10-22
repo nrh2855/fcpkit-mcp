@@ -40,6 +40,7 @@ class McpAnnotationTest(unittest.TestCase):
     def test_only_filmstrip_is_not_read_only(self):
         hints = {t['name']: t['annotations']['readOnlyHint'] for t in tool_list()}
         self.assertFalse(hints.pop('fcpkit_filmstrip'))
+        self.assertFalse(hints.pop('fcpkit_brief_apply'))
         self.assertTrue(all(hints.values()))
 
 

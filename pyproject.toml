@@ -23,6 +23,7 @@ dependencies = []
 [project.scripts]
 fcpkit-timeline = "fcpkit.timeline:main"
 fcpkit-brief = "fcpkit.timeline_brief:main"
+fcpkit-brief-apply = "fcpkit.brief_apply:main"
 fcpkit-handles = "fcpkit.handles:main"
 fcpkit-filmstrip = "fcpkit.filmstrip:main"
 fcpkit-effects = "fcpkit.effects_check:main"

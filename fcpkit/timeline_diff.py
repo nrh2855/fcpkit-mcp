@@ -36,7 +36,12 @@ NFC = lambda s: unicodedata.normalize('NFC', s or '')  # noqa: E731
 
 
 def _text(el) -> str:
-    return NFC(''.join(ts.text or '' for ts in el.iter('text-style'))).strip()
+    """A title's own text (whitespace collapsed). Other elements have none: iterating a clip would
+    also collect the text of every title anchored to it."""
+    if el.tag not in ('title', 'caption'):
+        return ''
+    raw = NFC(''.join(ts.text or '' for ts in el.iter('text-style')))
+    return ' / '.join(' '.join(x.split()) for x in raw.splitlines() if x.strip())
 
 
 class Side:

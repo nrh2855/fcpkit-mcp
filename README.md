@@ -42,6 +42,8 @@ Raw FCPXML is machine detail — ids, rational times, text-style definitions, ef
 
 On two real 15-minute multicam/longform timelines: 1.52 MB → 69 KB and 1.16 MB → 61 KB, every timed item shown. `--json` keeps exact rational times and the XML path of each row, so you can go from a brief line back to the element. Over MCP this is `fcpkit_brief` — have the agent call it before reading any XML.
 
+**Edit through the brief.** `fcpkit-brief X --ids --out X.brief.md` numbers every element line (`#n`) and records the XML's sha256. Edit the brief — move a caption, change its length, lane or text, change `vol -12dB`, delete a line — and run `fcpkit-brief-apply X X.brief.md --out X_fixed.fcpxmld` (MCP: `fcpkit_brief_apply`). Only changed lines are applied, to the exact element each `#n` stands for: times snap to frames; an item moved past its host clip is re-anchored to the main-storyline clip at the new time, in the position the FCP DTD requires; a text change touches only the styled run that holds it. Main-storyline cuts accept only volume (anything else would ripple). New lines, other value changes, keyframed volumes and text edits that span differently styled runs are refused, and then nothing is written. After applying, every element is compared before/after — only the edited ones may differ, each to the requested value — and the result is DTD-validated and written as a new file. A range brief (`--from/--to`) can be applied too. Same-lane overlaps caused by an edit are reported as warnings. Live check on Final Cut Pro 12.3: six edits to a 15-minute timeline (text, nudge, re-anchor, volume, delete) imported without warnings, and FCP's own export matched the applied XML item for item.
+
 ### Checks (read only)
 
 | Command | What it does |
@@ -123,7 +125,7 @@ Defaults suit a stock install; override with environment variables (most also ha
 
 ## MCP server (read only, except filmstrip pictures)
 
-`fcpkit-mcp` speaks MCP over stdio (stdlib only) and exposes `fcpkit_brief`, `fcpkit_handles`,
+`fcpkit-mcp` speaks MCP over stdio (stdlib only) and exposes `fcpkit_brief`, `fcpkit_brief_apply`, `fcpkit_handles`,
 `fcpkit_effects_check`, `fcpkit_timeline_diff`, `fcpkit_relink_preview`,
 `fcpkit_filmstrip` (returns the PNGs as images) and `fcpkit_libraries`. It has
 no tool that writes XML or imports into FCP.

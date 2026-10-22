@@ -46,11 +46,11 @@ class McpTest(unittest.TestCase):
         self.assertIsNone(M.handle({'jsonrpc': '2.0', 'method': 'notifications/initialized'}))
         tools = M.handle({'jsonrpc': '2.0', 'id': 2, 'method': 'tools/list'})['result']['tools']
         names = {t['name'] for t in tools}
-        self.assertEqual(names, {'fcpkit_brief', 'fcpkit_handles', 'fcpkit_effects_check', 'fcpkit_timeline_diff',
+        self.assertEqual(names, {'fcpkit_brief', 'fcpkit_brief_apply', 'fcpkit_handles', 'fcpkit_effects_check', 'fcpkit_timeline_diff',
                                  'fcpkit_relink_preview', 'fcpkit_filmstrip', 'fcpkit_libraries'})
         # filmstrip writes PNGs into a new folder; every other tool is read-only
-        self.assertTrue(all(t['annotations']['readOnlyHint'] != (t['name'] == 'fcpkit_filmstrip') for t in tools))
-        self.assertFalse(any(w in n for n in names for w in ('import', 'snap', 'write', 'ledger')))
+        self.assertTrue(all(t['annotations']['readOnlyHint'] != (t['name'] in ('fcpkit_filmstrip', 'fcpkit_brief_apply')) for t in tools))
+        self.assertFalse(any(w in n for n in names for w in ('import', 'snap', 'write', 'ledger')))  # no FCP import/snap/ledger over MCP
 
     def test_handles_finds_jump_cut_dissolve(self):
         res = call('fcpkit_handles', xml=str(self.xml))
