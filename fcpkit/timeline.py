@@ -29,6 +29,7 @@ from fractions import Fraction
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
+from . import fcpxml_io
 from . import retime
 
 TIMED = {'asset-clip', 'clip', 'mc-clip', 'ref-clip', 'sync-clip', 'video',
@@ -138,7 +139,7 @@ class Timeline:
         """`tree`: an already parsed tree of the same file (e.g. from fcpxml_io, to edit and save it)."""
         self.source = Path(path).expanduser()
         self.xml = xml_path(self.source)
-        self.tree = tree if tree is not None else ET.parse(self.xml)
+        self.tree = tree if tree is not None else fcpxml_io.safe_parse(self.xml)
         self.root = self.tree.getroot()
         self.resources = {n.get('id'): n for n in self.root.findall('./resources/*') if isinstance(n.tag, str)}
         projects = self.root.findall('.//project')

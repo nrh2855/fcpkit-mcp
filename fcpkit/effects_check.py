@@ -38,6 +38,7 @@ import unicodedata
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+from . import fcpxml_io
 from . import config
 from .timeline import existing_path, url_to_path, xml_path
 
@@ -237,7 +238,7 @@ def count_uses(root, effect_ids: set[str]) -> dict[str, dict[str, int]]:
 
 def check(path, registry=None, templates_dir=None, fcp_apps=None) -> dict:
     xml = xml_path(Path(path))
-    root = ET.parse(xml).getroot()
+    root = fcpxml_io.safe_parse(xml).getroot()
     effects = root.findall('./resources/effect')
     ctx = {'registry': registry if registry is not None else load_fxplug_registry(fcp_apps),
            'templates_dir': Path(templates_dir) if templates_dir else config.motion_templates(),

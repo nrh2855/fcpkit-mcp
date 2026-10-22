@@ -48,7 +48,8 @@ class McpTest(unittest.TestCase):
         names = {t['name'] for t in tools}
         self.assertEqual(names, {'fcpkit_handles', 'fcpkit_effects_check', 'fcpkit_timeline_diff',
                                  'fcpkit_relink_preview', 'fcpkit_filmstrip', 'fcpkit_libraries'})
-        self.assertTrue(all(t['annotations']['readOnlyHint'] for t in tools))
+        # filmstrip writes PNGs into a new folder; every other tool is read-only
+        self.assertTrue(all(t['annotations']['readOnlyHint'] != (t['name'] == 'fcpkit_filmstrip') for t in tools))
         self.assertFalse(any(w in n for n in names for w in ('import', 'snap', 'write', 'ledger')))
 
     def test_handles_finds_jump_cut_dissolve(self):

@@ -4,6 +4,12 @@
 
 First standalone release, extracted from a private editing toolkit.
 
+Security review before release:
+- Every XML read refuses entity declarations and DOCTYPE internal subsets
+  (entity-expansion bombs on old expat; XXE was already off by default).
+- `fcpkit_filmstrip` is annotated `readOnlyHint: false` (it writes PNGs into a new folder).
+- ffmpeg output paths are passed absolute so a file name can never be read as an option.
+
 - Timeline resolver with exact `Fraction` time: asset clips, clips, sync clips,
   multicam angles (video and audio separately), compound clips, linear retimes;
   unsupported retimes are reported, never assumed.

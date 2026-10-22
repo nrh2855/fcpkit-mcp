@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -34,6 +35,8 @@ TRACE = '0x00E5FF'
 
 
 def _run(cmd):
+    # the last argument is always the output file: make it absolute so a name like '-x.png' is never an option
+    cmd = list(cmd[:-1]) + [os.path.abspath(cmd[-1])]
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode:
         raise RuntimeError(f'ffmpeg failed ({r.returncode}): ' + r.stderr[-1500:])

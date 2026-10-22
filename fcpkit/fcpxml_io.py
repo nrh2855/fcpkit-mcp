@@ -35,7 +35,29 @@ class FCPXMLEnvelope:
     suffix: bytes
 
 
+_DTD_SUBSET = re.compile(rb'<!DOCTYPE[^>\[]*\[')
+
+
+def reject_entities(data: bytes) -> None:
+    """Refuse entity declarations and DOCTYPE internal subsets before any parser sees them.
+
+    FCPXML never uses entities (FCP writes a bare `<!DOCTYPE fcpxml>`). Old expat
+    builds (e.g. 2.2.x in macOS's /usr/bin/python3 3.9) have no protection against
+    entity-expansion bombs, so a hostile file is rejected instead of expanded.
+    External entities are never fetched (Python disables them by default)."""
+    if b'<!ENTITY' in data or _DTD_SUBSET.search(data):
+        raise FCPXMLEnvelopeError('FCPXML must not declare entities or a DOCTYPE internal subset')
+
+
+def safe_parse(path) -> ET.ElementTree:
+    """Read-only parse of an FCPXML file with the entity guard (comments dropped)."""
+    data = Path(path).read_bytes()
+    reject_entities(data)
+    return ET.parse(io.BytesIO(data))
+
+
 def _split_envelope(data: bytes) -> FCPXMLEnvelope:
+    reject_entities(data)
     root_start: int | None = None
     root_end: int | None = None
     depth = 0

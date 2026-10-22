@@ -105,8 +105,9 @@ Defaults suit a stock install; override with environment variables (most also ha
 2. **Unknown is REVIEW, not PASS.** Unsupported retimes (holds, reverse, eased multi-point ramps), unresolved references, missing registries — all surface as REVIEW with the reason.
 3. **Live steps are opt-in and bounded.** Nothing launches FCP implicitly. An import needs an approved plan id, takes a lock, refuses on any failed check, and leaves a receipt. Lock files are renamed, not deleted, when released.
 4. **Undo moves, never deletes**, and only files whose hash still matches.
+5. **Hostile files are refused, not expanded.** FCPXML never uses entities, so any `<!ENTITY>` or DOCTYPE internal subset is rejected before parsing (old expat builds, such as the one in macOS's `/usr/bin/python3` 3.9, have no entity-expansion limits). External entities are never fetched; `xmllint` runs with `--nonet`. No tool runs a shell: every subprocess gets an argument list, and the only value put into AppleScript (the FCP app path) is escaped.
 
-## MCP server (read only)
+## MCP server (read only, except filmstrip pictures)
 
 `fcpkit-mcp` speaks MCP over stdio (stdlib only) and exposes `fcpkit_handles`,
 `fcpkit_effects_check`, `fcpkit_timeline_diff`, `fcpkit_relink_preview`,

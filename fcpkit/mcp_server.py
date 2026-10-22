@@ -2,9 +2,10 @@
 """Read-only MCP server for fcpkit (stdio, stdlib only).
 
 Exposes the checking tools to an MCP client (Claude Code, Claude Desktop, …).
-v0 is deliberately read-only: no tool here writes an FCPXML, imports into
-Final Cut Pro or changes a library. Filmstrip pictures go to a NEW temporary
-folder (or a new folder you name) and come back as images.
+v0 never writes an FCPXML, imports into Final Cut Pro or changes a library.
+The one tool that writes files is fcpkit_filmstrip: PNGs go to a NEW temporary
+folder (or a new folder you name, refused if it exists) and come back as images;
+it is annotated readOnlyHint=false.
 
 Tools:
   fcpkit_handles          transition handle + jump-cut-dissolve check
@@ -33,6 +34,11 @@ from . import __version__
 
 PROTOCOL_VERSIONS = ('2025-06-18', '2025-03-26', '2024-11-05')
 ANNOTATIONS = {'readOnlyHint': True, 'destructiveHint': False, 'openWorldHint': False}
+
+
+def _annotations(name: str) -> dict:
+    # filmstrip creates PNGs in a new folder: not read-only, but never overwrites or deletes
+    return {**ANNOTATIONS, 'readOnlyHint': False} if name == 'fcpkit_filmstrip' else ANNOTATIONS
 
 
 def _sec(value) -> Fraction:
@@ -146,7 +152,7 @@ TOOLS = {
 
 
 def tool_list() -> list[dict]:
-    return [{'name': name, 'description': desc, 'annotations': ANNOTATIONS,
+    return [{'name': name, 'description': desc, 'annotations': _annotations(name),
              'inputSchema': {'type': 'object', 'properties': props, 'required': req, 'additionalProperties': False}}
             for name, (_, desc, props, req) in TOOLS.items()]
 

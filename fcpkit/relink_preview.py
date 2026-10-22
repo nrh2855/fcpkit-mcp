@@ -28,6 +28,7 @@ import unicodedata
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+from . import fcpxml_io
 from .timeline import existing_path, url_to_path, xml_path
 
 
@@ -85,7 +86,7 @@ def asset_media(asset, base: Path) -> tuple[str | None, Path | None, bool]:
 
 def preview(xml, src_prefix: str | None = None, dst_prefix: str | None = None) -> dict:
     xml_file = xml_path(Path(xml))
-    root = ET.parse(xml_file).getroot()
+    root = fcpxml_io.safe_parse(xml_file).getroot()
     assets = root.findall('./resources/asset')
     sp = norm_prefix(src_prefix) if src_prefix else None
     dp = norm_prefix(dst_prefix) if dst_prefix else None
