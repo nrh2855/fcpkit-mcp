@@ -1,4 +1,4 @@
-# fcpkit
+# fcpkit-mcp
 
 Exact, safety-first tools for **Final Cut Pro** timelines (FCPXML) on macOS.
 
@@ -19,7 +19,7 @@ you name, and nowhere else.
 ## Install
 
 ```bash
-pip install .            # from a checkout
+pip install .            # from a checkout (installs the fcpkit-* commands and fcpkit-mcp)
 ```
 
 Every tool is also runnable as a module: `python3 -m fcpkit.handles X.fcpxmld`.
@@ -144,4 +144,4 @@ sets where temporary files go. One test compiles the listing AppleScript with
 
 ## License
 
-Not yet chosen — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).
