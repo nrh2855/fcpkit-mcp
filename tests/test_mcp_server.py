@@ -46,7 +46,7 @@ class McpTest(unittest.TestCase):
         self.assertIsNone(M.handle({'jsonrpc': '2.0', 'method': 'notifications/initialized'}))
         tools = M.handle({'jsonrpc': '2.0', 'id': 2, 'method': 'tools/list'})['result']['tools']
         names = {t['name'] for t in tools}
-        self.assertEqual(names, {'fcpkit_handles', 'fcpkit_effects_check', 'fcpkit_timeline_diff',
+        self.assertEqual(names, {'fcpkit_brief', 'fcpkit_handles', 'fcpkit_effects_check', 'fcpkit_timeline_diff',
                                  'fcpkit_relink_preview', 'fcpkit_filmstrip', 'fcpkit_libraries'})
         # filmstrip writes PNGs into a new folder; every other tool is read-only
         self.assertTrue(all(t['annotations']['readOnlyHint'] != (t['name'] == 'fcpkit_filmstrip') for t in tools))

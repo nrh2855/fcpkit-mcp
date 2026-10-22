@@ -8,6 +8,7 @@ folder (or a new folder you name, refused if it exists) and come back as images;
 it is annotated readOnlyHint=false.
 
 Tools:
+  fcpkit_brief            the timeline as a compact readable brief (read this before raw XML)
   fcpkit_handles          transition handle + jump-cut-dissolve check
   fcpkit_effects_check    effect/template resolution against FCP's registries
   fcpkit_timeline_diff    what changed between two timelines
@@ -107,8 +108,26 @@ def tool_libraries(durations: bool = True, timeout: int = 20) -> dict:
     return fcp_libraries.snapshot(timeout=int(timeout), durations=bool(durations))
 
 
+def tool_brief(xml: str, start: float | None = None, end: float | None = None, detail: int = 2,
+               lang: str = 'en') -> dict:
+    from . import timeline_brief
+    lim = lambda v: Fraction(str(v)).limit_denominator(10 ** 6) if v is not None else None  # noqa: E731
+    text, _ = timeline_brief.render(xml, lim(start), lim(end), int(detail), lang=lang)
+    return {'brief': text}
+
+
 XML = {'type': 'string', 'description': 'path to a .fcpxml file or .fcpxmld bundle'}
 TOOLS = {
+    'fcpkit_brief': (tool_brief, 'Read a timeline as a compact editorial brief instead of raw XML (call this '
+                     'first): symbol table of sources/templates, one line per main-storyline cut (source @time, '
+                     'angle, non-default volume/scale/effects) and under it every caption (with text), title, '
+                     'overlay, sound, transition and marker that starts during that cut; lane table, density, and '
+                     'a coverage line "timed items shown n/n". Typically 15-25x smaller than the XML.',
+                     {'xml': XML, 'start': {'type': 'number', 'description': 'from this timeline second'},
+                      'end': {'type': 'number', 'description': 'to this timeline second'},
+                      'detail': {'type': 'integer', 'enum': [1, 2, 3],
+                                 'description': '1 no values, 2 key values (default), 3 + effect parameters'},
+                      'lang': {'type': 'string', 'enum': ['en', 'ko'], 'description': 'label language'}}, ['xml']),
     'fcpkit_handles': (tool_handles, 'Check every transition: does each side have the media it needs (multicam, '
                        'compound and retime aware), and does a dissolve sit on a jump cut (it would show removed '
                        'material)? Statuses PASS/INFO/REVIEW/FAIL; unknown is REVIEW, never PASS.',

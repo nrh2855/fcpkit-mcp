@@ -28,6 +28,19 @@ Every tool is also runnable as a module: `python3 -m fcpkit.handles X.fcpxmld`.
 
 Exit codes for the checkers: **0** pass, **1** defect found, **2** could not verify (REVIEW).
 
+### Read first: the brief
+
+`fcpkit-brief X.fcpxmld [--from 60 --to 120] [--detail 1|2|3] [--lang en|ko] [--out brief.md] [--json rows.json]`
+
+Raw FCPXML is machine detail — ids, rational times, text-style definitions, effect blobs, bookmarks. Reading it costs a model (or a person) a lot of time and things get missed. The brief "decompiles" it into the edit:
+
+- a symbol table: every source / multicam / compound becomes `M1, M2 …`, every template or effect `T1, T2 …`, so long names appear once;
+- one line per main-storyline cut — `▌00:07.01 M1 @05:36.90 [angle] vol -15dB (1.94s)` — and under it everything that *starts* during that cut: captions and titles with their text, overlays, sounds, music, transitions, markers, with lane, time, length and key values (volume, scale/position, effects, speed, keyframes);
+- values shared by most cuts are stated once in the header, not repeated;
+- a lane table, per-minute density, and a coverage line: `timed items shown 1413/1413 (all)` — anything not shown is named.
+
+On two real 15-minute multicam/longform timelines: 1.52 MB → 69 KB and 1.16 MB → 61 KB, every timed item shown. `--json` keeps exact rational times and the XML path of each row, so you can go from a brief line back to the element. Over MCP this is `fcpkit_brief` — have the agent call it before reading any XML.
+
 ### Checks (read only)
 
 | Command | What it does |
@@ -54,7 +67,7 @@ Exit codes for the checkers: **0** pass, **1** defect found, **2** could not ver
 | `fcpkit-plan make \| check` | Binds an approval to one exact job: plan id = sha256 of (action, XML content hash, library, event, app, validity window). A rebuilt XML, another library or an expired window → refused. |
 | `fcpkit-ledger list \| verify \| undo \| record` | Append-only write ledger (JSONL) with input/output sha256 (bundles hashed whole). Undo never deletes: it moves outputs into `undone/` and refuses if a file changed since. |
 | `fcpkit-watch-export --dir D [--against BUILD]` | Waits for a fresh FCP "Export XML" by content hash (stable across two polls, newest wins) and optionally diffs it against your build. |
-| `fcpkit-mcp` | Read-only MCP server (see below). |
+| `fcpkit-mcp` | MCP server (see below). |
 
 Import checks, all before any Apple event: lock file free; plan id matches;
 every `/Volumes/<name>` holding media is mounted; exactly one FCP running and
@@ -109,7 +122,7 @@ Defaults suit a stock install; override with environment variables (most also ha
 
 ## MCP server (read only, except filmstrip pictures)
 
-`fcpkit-mcp` speaks MCP over stdio (stdlib only) and exposes `fcpkit_handles`,
+`fcpkit-mcp` speaks MCP over stdio (stdlib only) and exposes `fcpkit_brief`, `fcpkit_handles`,
 `fcpkit_effects_check`, `fcpkit_timeline_diff`, `fcpkit_relink_preview`,
 `fcpkit_filmstrip` (returns the PNGs as images) and `fcpkit_libraries`. It has
 no tool that writes XML or imports into FCP.

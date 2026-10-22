@@ -1,0 +1,61 @@
+"""timeline_brief: every timed item is shown once, under the cut on screen when it starts."""
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from fcpkit import timeline_brief  # noqa: E402
+from fixtures import asset, fcpxml, write  # noqa: E402
+
+
+def cap(offset, duration, text, lane=1):
+    return (f'<title ref="rt" lane="{lane}" offset="{offset}" duration="{duration}" name="{text}">'
+            f'<text><text-style ref="s">{text}\n   </text-style></text>'
+            '<text-style-def id="s"><text-style font="Helvetica" fontSize="60"/></text-style-def></title>')
+
+
+class BriefTest(unittest.TestCase):
+    def test_brief_lists_everything_once(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            src = d / 'a.mp4'
+            src.write_bytes(b'')
+            spine = ('<asset-clip ref="r2" offset="0s" start="10s" duration="5s" name="A">'
+                     '<adjust-transform scale="1.25 1.25"/>'
+                     + cap('11s', '1s', '하나')
+                     # a connected storyline anchored at 0 whose title starts at 7 s (under cut B)
+                     + '<spine lane="2" offset="10s"><gap name="g" offset="0s" duration="7s"/>'
+                     + '<title ref="rt" offset="7s" duration="1s" name="late"/></spine>'
+                     + '<marker start="12s" duration="1/30s" value="확인"/></asset-clip>'
+                     '<asset-clip ref="r2" offset="5s" start="40s" duration="5s" name="B">'
+                     '<adjust-transform scale="1.25 1.25"/><adjust-volume amount="-6dB"/>'
+                     + cap('41s', '1s', '둘') + '</asset-clip>')
+            text, rows = timeline_brief.render(write(d, 'x.fcpxml', fcpxml(asset('r2', src, 100), spine, '10s')), lang='ko')
+        self.assertIn('표시한 시간 항목', text)
+        self.assertIn('(전부)', text)
+        self.assertIn('본선 기본값(줄에서 생략): scale 1.25 1.25', text)
+        self.assertIn('"하나"', text)              # caption text, whitespace cleaned
+        self.assertNotIn('하나 /', text)
+        self.assertIn('vol -6dB', text)            # deviation from the defaults is kept
+        lines = text.splitlines()
+        b = next(i for i, l in enumerate(lines) if l.startswith('▌00:05.00'))
+        late = next(i for i, l in enumerate(lines) if '00:07.00' in l)
+        self.assertGreater(late, b)                # grouped by time, not by its anchor at 0:00
+        self.assertTrue(any('◆ 00:02.00 확인' in l for l in lines))
+        self.assertEqual(len([r for r in rows if r['tag'] == 'title']), 3)
+
+
+if __name__ == '__main__':
+    unittest.main()
+
+
+class BriefEnglishTest(unittest.TestCase):
+    def test_english_labels_by_default(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            src = d / 'a.mp4'
+            src.write_bytes(b'')
+            spine = '<asset-clip ref="r2" offset="0s" start="10s" duration="5s" name="A"/>'
+            text, _ = timeline_brief.render(write(d, 'x.fcpxml', fcpxml(asset('r2', src, 100), spine, '5s')))
+        self.assertIn('timed items shown 1/1 (all)', text)

@@ -4,6 +4,9 @@
 
 First standalone release, extracted from a private editing toolkit.
 
+- `fcpkit-brief` / MCP `fcpkit_brief`: the timeline as a compact readable brief (symbol table,
+  one line per cut with everything starting under it, coverage n/n), English or Korean labels.
+
 Security review before release:
 - Every XML read refuses entity declarations and DOCTYPE internal subsets
   (entity-expansion bombs on old expat; XXE was already off by default).
