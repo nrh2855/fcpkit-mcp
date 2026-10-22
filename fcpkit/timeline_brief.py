@@ -30,7 +30,7 @@ from fractions import Fraction
 from pathlib import Path
 from urllib.parse import unquote
 
-from .timeline import Timeline, t
+from .timeline import TIMED, Timeline, t
 
 NFC = lambda s: unicodedata.normalize('NFC', s or '')  # noqa: E731
 LABELS = {
@@ -41,13 +41,15 @@ LABELS = {
            'templates': 'Templates & effects', 'lanes': 'Lanes', 'lane_head': '| lane | items | most common |',
            'density': 'Density (per minute)', 'cuts': 'cuts', 'titles': 'titles/captions', 'below': 'lanes below (sound)',
            'transitions': 'transitions', 'shown': 'timed items shown', 'missing': 'not shown', 'all': '(all)',
-           'markers': 'markers', 'range': 'range', 'range_items': 'timed items shown', 'nohost': 'no main-storyline host'},
+           'markers': 'markers', 'range': 'range', 'range_items': 'timed items shown', 'nohost': 'no main-storyline host', 'opened': 'compound opened:',
+           'compound': 'compound, items inside:', 'closed': 'inside compounds not opened (overlays)'},
     'ko': {'legend': '시각 = 타임라인 mm:ss.cc · ▌= 본선 컷(원본 @원본시각, [앵글]) · 들여쓴 줄 = 그 컷 동안 시작하는 항목 '
                      '(레인 +위/-아래) · ⇄ 트랜지션 · ◆ 마커 · vol/scale/fx = 붙은 값 · kf = 키프레임',
            'defaults': '본선 기본값(줄에서 생략)', 'sources': '원본', 'templates': '템플릿·효과', 'lanes': '레인',
            'lane_head': '| lane | 항목 | 많은 것 |', 'density': '밀도 (분당)', 'cuts': '컷', 'titles': '타이틀/자막',
            'below': '아래 레인(소리)', 'transitions': '트랜지션', 'shown': '표시한 시간 항목', 'missing': '빠진 것',
-           'all': '(전부)', 'markers': '마커', 'range': '구간', 'range_items': '시간 항목 표시', 'nohost': '본선 없음'},
+           'all': '(전부)', 'markers': '마커', 'range': '구간', 'range_items': '시간 항목 표시', 'nohost': '본선 없음', 'opened': '컴파운드 펼침:',
+           'compound': '컴파운드, 안의 항목', 'closed': '펼치지 않은 컴파운드(오버레이) 안의 항목'},
 }
 SKIP_PARAM = re.compile(r'^\s*[\[{]|^[A-Za-z0-9+/=]{40,}$')  # JSON programs, blobs
 
@@ -76,6 +78,9 @@ class Brief:
         self.media_use = Counter()
         self.shown: set[int] = set()
         self.last_main_name = None
+        self.closed_inner = 0
+        self.next_index = len(tl.items)
+        self.all_items = list(tl.items)
         self.main_defaults: set[str] = set()
 
     # ---------------------------------------------------------------- symbols
@@ -207,6 +212,11 @@ class Brief:
                 if it.start and r is not None and r.tag in ('asset', 'media') and not still:
                     body += f' @{tc(it.start)}'
                 body += self.angle(el)
+                seq = self.compound_sequence(it)
+                if seq is not None and not getattr(it, 'expanded', 0):
+                    n = sum(1 for x in seq.iter() if x.tag in TIMED and x.tag != 'transition')
+                    self.closed_inner += n
+                    body += f' [{self.L["compound"]} {n}]'
             name = NFC(it.name)
             ref_name = NFC(r.get('name')) if r is not None else ''
             if name and name != ref_name and not name.startswith(ref_name + ' '):
@@ -220,28 +230,63 @@ class Brief:
             vals = [v for v in vals if v not in self.main_defaults]
         return ' '.join([body] + vals)
 
+    # ------------------------------------------------------------- compounds
+    def compound_sequence(self, it):
+        r = self.tl.resources.get(it.el.get('ref')) if it.tag == 'ref-clip' else None
+        return r.find('sequence') if r is not None and r.tag == 'media' else None
+
+    def compound_items(self, it) -> list:
+        """Timed items inside a compound clip, mapped to this timeline's time and clipped to what
+        the compound shows. Inner main-storyline items keep in_main=True."""
+        seq = self.compound_sequence(it)
+        sub = Timeline.__new__(Timeline)
+        sub.resources, sub.items, sub.by_el = self.tl.resources, [], {}
+        r = self.tl.resources.get(it.el.get('ref'))
+        sub._walk(seq.find('spine'), it.abs_start, it.start, f'{it.path}>{NFC(r.get("name"))}', None, 0, True)
+        inner = [i for i in sub.items if i.abs_end > it.abs_start and i.abs_start < it.abs_end]
+        for i in inner:
+            i.index = self.next_index
+            self.next_index += 1
+        return inner
+
+    def flatten(self, items, depth=0):
+        """Main storyline with compound clips opened: (main list, inner non-main items)."""
+        out, extra = [], []
+        for m in items:
+            out.append(m)
+            if m.tag == 'ref-clip' and depth < 4 and self.compound_sequence(m) is not None:
+                inner = self.compound_items(m)
+                m.expanded = sum(1 for i in inner if i.in_main and i.tag not in ('transition', 'gap'))
+                sub_main, sub_extra = self.flatten([i for i in inner if i.in_main], depth + 1)
+                out += sub_main
+                extra += [i for i in inner if not i.in_main] + sub_extra + [i for i in sub_main]
+        return out, extra
+
     def build(self, start: Fraction | None = None, end: Fraction | None = None, minute_heads: bool = True):
         tl = self.tl
-        main = [i for i in tl.main_items()]
+        self.next_index = len(tl.items)
+        main, extra = self.flatten(tl.main_items())
+        self.all_items = tl.items + [i for i in extra if i.index >= len(tl.items) and not i.in_main] \
+            + [m for m in main if m.index >= len(tl.items)]
         # group by the main-storyline cut that is on screen when the item starts (not by its anchor:
         # a connected storyline anchored at 0:00 can hold items far later in the video)
         import bisect
-        slots = [m for m in main if m.tag != 'transition']
+        slots = [m for m in main if m.tag != 'transition' and not getattr(m, 'expanded', 0)]
         starts = [m.abs_start for m in slots]
         under = defaultdict(list)
-        for it in tl.items:
+        for it in self.all_items:
             if it.in_main:
                 continue
             k = bisect.bisect_right(starts, it.abs_start) - 1
             under[slots[k].index if k >= 0 else -1].append(it)
         # values shared by most main-storyline cuts are stated once in the header
-        clips = [m for m in main if m.tag not in ('transition', 'gap')]
+        clips = [m for m in slots if m.tag != 'gap']
         common = Counter(v for m in clips for v in set(self.values(m.el)))
         self.main_defaults = {v for v, n in common.items() if clips and n >= 0.6 * len(clips)}
         self.fx_use.clear()
         # markers on any element (main clips, titles, overlays), placed by timeline time
         marks = defaultdict(list)
-        for it in tl.items:
+        for it in self.all_items:
             for mk in [x for x in it.el if x.tag in ('marker', 'chapter-marker')]:
                 at = it.to_abs(t(mk.get('start')))
                 k = bisect.bisect_right(starts, at) - 1
@@ -257,12 +302,17 @@ class Brief:
             if minute_heads and int(m.abs_start // 60) != minute:
                 minute = int(m.abs_start // 60)
                 lines.append(f'\n## {minute:02d}:00')
-            if m.tag == 'transition':
+            if getattr(m, 'expanded', 0):
+                lines.append(f'⊂{tc(m.abs_start)} {self.describe(m)} ({dur(m.duration)}) — {self.L["opened"]} '
+                             f'{m.expanded} {self.L["cuts"]}')
+            elif m.tag == 'transition':
                 lines.append(f'{tc(m.abs_start)} {self.describe(m)} {dur(m.duration)}')
             else:
                 lines.append(f'▌{tc(m.abs_start)} {self.describe(m)} ({dur(m.duration)})')
             self.shown.add(m.index)
             rows.append(self.row(m, 0))
+            if getattr(m, 'expanded', 0):
+                continue
             entries = [(c.abs_start, 0, c.lane, c) for c in under.get(m.index, [])]
             entries += [(at, 1, 0, mk) for at, mk in marks.get(m.index, [])]
             for at, kind, lane, obj in sorted(entries, key=lambda e: (e[0], e[1], e[2])):
@@ -324,11 +374,11 @@ def render(path, start=None, end=None, detail=2, minute_heads=True, lang='en') -
     head += [f'{a} = {info} ×{b.media_use[a]}' for a, info in b.media_info.items()]
     head.append(f'\n## {L["templates"]}')
     head += [f'{alias} = {name} ×{b.fx_use[name]}' for name, alias in b.fx_alias.items()]
-    total = len(tl.items)
+    total = len(b.all_items)
     if start is None and end is None:
-        missing = Counter(tl.items[i].tag for i in range(total) if i not in b.shown)
+        missing = Counter(i.tag for i in b.all_items if i.index not in b.shown)
         cover = (f'\n{L["shown"]} {len(b.shown)}/{total}' + (f' — {L["missing"]}: {dict(missing)}' if missing else f' {L["all"]}')
-                 + f', {L["markers"]} {b.marker_count}')
+                 + f', {L["markers"]} {b.marker_count}' + (f'; {L["closed"]} {b.closed_inner}' if b.closed_inner else ''))
     else:
         cover = f'\n{L["range"]} {tc(start or 0)}–{tc(end or tl.duration)}: {L["range_items"]} {len(b.shown)}'
     text = '\n'.join(head + body + b.stats() + [cover]) + '\n'

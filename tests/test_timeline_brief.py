@@ -50,6 +50,28 @@ if __name__ == '__main__':
     unittest.main()
 
 
+class CompoundTest(unittest.TestCase):
+    def test_main_storyline_compound_is_opened(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            src = d / 'a.mp4'
+            src.write_bytes(b'')
+            res = (asset('r2', src, 100)
+                   + '<media id="c1" name="BASE"><sequence format="r1" duration="8s" tcStart="0s"><spine>'
+                   '<asset-clip ref="r2" offset="0s" start="10s" duration="3s" name="in1"/>'
+                   '<asset-clip ref="r2" offset="3s" start="40s" duration="5s" name="in2"/>'
+                   '</spine></sequence></media>')
+            spine = ('<ref-clip ref="c1" offset="0s" start="1s" duration="6s" name="BASE">'
+                     + cap('3.5s', '1s', '둘째 컷 자막') + '</ref-clip>')
+            text, _ = timeline_brief.render(write(d, 'c.fcpxml', fcpxml(res, spine, '6s')), lang='ko')
+        lines = text.splitlines()
+        self.assertTrue(any(l.startswith('⊂00:00.00') and '2 컷' in l for l in lines))
+        second = next(i for i, l in enumerate(lines) if l.startswith('▌00:02.00'))  # in2 starts at 3-1 = 2 s
+        self.assertIn('둘째 컷 자막', lines[second + 1])                         # caption at 2.5 s under in2
+        self.assertIn('(전부)', text)
+
+
+
 class BriefEnglishTest(unittest.TestCase):
     def test_english_labels_by_default(self):
         with tempfile.TemporaryDirectory() as d:

@@ -37,6 +37,7 @@ Raw FCPXML is machine detail — ids, rational times, text-style definitions, ef
 - a symbol table: every source / multicam / compound becomes `M1, M2 …`, every template or effect `T1, T2 …`, so long names appear once;
 - one line per main-storyline cut — `▌00:07.01 M1 @05:36.90 [angle] vol -15dB (1.94s)` — and under it everything that *starts* during that cut: captions and titles with their text, overlays, sounds, music, transitions, markers, with lane, time, length and key values (volume, scale/position, effects, speed, keyframes);
 - values shared by most cuts are stated once in the header, not repeated;
+- a compound clip on the main storyline is opened: its inner cuts appear as normal lines in timeline time (nested compounds too); compounds used as overlays stay one line with the number of items inside, and the coverage line reports that number separately;
 - a lane table, per-minute density, and a coverage line: `timed items shown 1413/1413 (all)` — anything not shown is named.
 
 On two real 15-minute multicam/longform timelines: 1.52 MB → 69 KB and 1.16 MB → 61 KB, every timed item shown. `--json` keeps exact rational times and the XML path of each row, so you can go from a brief line back to the element. Over MCP this is `fcpkit_brief` — have the agent call it before reading any XML.
