@@ -1,0 +1,23 @@
+# Changelog
+
+## 0.1.0 — unreleased
+
+First standalone release, extracted from a private editing toolkit.
+
+- Timeline resolver with exact `Fraction` time: asset clips, clips, sync clips,
+  multicam angles (video and audio separately), compound clips, linear retimes;
+  unsupported retimes are reported, never assumed.
+- `fcpkit-handles`: transition handle check at the transition's real position,
+  jump-cut-dissolve detection, optional removed-audio loudness and handle filmstrips.
+- `fcpkit-filmstrip`: program-window and source-range frame strips with waveform and cut ticks.
+- `fcpkit-effects`: effect/template resolution against FCP's own FxPlug list,
+  built-in Motion templates, user and library templates.
+- `fcpkit-relink-preview`, `fcpkit-diff`, `fcpkit-snap`, `fcpkit-timeline`.
+- `fcpkit-libraries` (AppleScript listing by app path) and `fcpkit-import`
+  (`<import-options>` targeting with pre-flight checks, lock, plan id, receipt).
+- `fcpkit-plan`, `fcpkit-ledger`, `fcpkit-watch-export`.
+- `fcpkit-mcp`: read-only MCP server (stdio, stdlib only).
+- Configuration by environment variables (`FCPKIT_*`) instead of fixed paths;
+  the external-volume check now covers every `/Volumes/<name>` that holds media.
+- Removed from the private version: a hook into an external incremental
+  reviewer in `watch-export` (use `--against` for a diff instead).

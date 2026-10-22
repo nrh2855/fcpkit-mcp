@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fcpkit"
+version = "0.1.0"
+description = "Exact, safety-first FCPXML and Final Cut Pro tools: multicam-aware timeline resolver, transition handle checker, effect/template checker, timeline diff, guarded import."
+readme = "README.md"
+requires-python = ">=3.9"
+# license: to be chosen by the owner before publishing (see LICENSE)
+authors = [{ name = "fcpkit contributors" }]
+keywords = ["final cut pro", "fcpxml", "video editing", "multicam", "macos"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: MacOS",
+    "Topic :: Multimedia :: Video :: Non-Linear Editor",
+    "Development Status :: 3 - Alpha",
+]
+dependencies = []
+
+[project.scripts]
+fcpkit-timeline = "fcpkit.timeline:main"
+fcpkit-handles = "fcpkit.handles:main"
+fcpkit-filmstrip = "fcpkit.filmstrip:main"
+fcpkit-effects = "fcpkit.effects_check:main"
+fcpkit-relink-preview = "fcpkit.relink_preview:main"
+fcpkit-diff = "fcpkit.timeline_diff:main"
+fcpkit-snap = "fcpkit.snap_to_cuts:main"
+fcpkit-libraries = "fcpkit.fcp_libraries:main"
+fcpkit-import = "fcpkit.fcp_import_xml:main"
+fcpkit-plan = "fcpkit.plan:main"
+fcpkit-ledger = "fcpkit.ledger:main"
+fcpkit-watch-export = "fcpkit.watch_export:main"
+fcpkit-mcp = "fcpkit.mcp_server:main"
+
+[tool.setuptools]
+packages = ["fcpkit"]
